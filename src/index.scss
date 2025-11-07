@@ -20,3 +20,62 @@
     padding: 2px 8px;
   }
 }
+
+/* 分享对话框样式 */
+.share-dialog {
+  &__section {
+    margin-bottom: 12px;
+  }
+  &__label {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  &__hint {
+    font-size: 12px;
+    color: var(--b3-theme-on-surface);
+    opacity: .7;
+  }
+  &__existing {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    font-size: 12px;
+    color: var(--b3-theme-on-surface);
+    opacity: .8;
+  }
+}
+
+.share-record-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--b3-border-color);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: var(--b3-theme-background);
+  &__item {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+    .title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .actions {
+      display: flex;
+      gap: 4px;
+    }
+  }
+}
