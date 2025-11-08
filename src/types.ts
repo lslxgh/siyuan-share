@@ -35,6 +35,7 @@ export interface ShareRecord {
     isPublic: boolean;
     createdAt: number;
     updatedAt: number;
+    viewCount?: number;
     reused?: boolean;
 }
 

@@ -17,7 +17,6 @@ export class ShareDialog {
     private passwordHr!: HTMLElement;
     private passwordInput!: HTMLInputElement;
     private expireDaysInput!: HTMLInputElement;
-    private publicCheckbox!: HTMLInputElement;
     private confirmBtn!: HTMLButtonElement;
     private copyBtn!: HTMLButtonElement | null;
     private existingUrlInput!: HTMLInputElement;
@@ -94,16 +93,6 @@ export class ShareDialog {
                         <input class="b3-text-field fn__flex-center fn__size200" id="shareExpireDays" type="number" min="1" max="365" />
                     </label>
 
-                    <div class="fn__hr"></div>
-
-                    <label class="fn__flex b3-label config__item">
-                        <div class="fn__flex-1">
-                            ${this.plugin.i18n.shareDialogPublic}
-                            <div class="b3-label__text">${this.plugin.i18n.shareDialogPublicDesc}</div>
-                        </div>
-                        <span class="fn__space"></span>
-                        <input class="b3-switch fn__flex-center" id="sharePublic" type="checkbox" />
-                    </label>
                 </div>
             </div>
             <div class="b3-dialog__action">
@@ -134,7 +123,6 @@ export class ShareDialog {
         this.passwordHr = this.dialog.element.querySelector("#sharePasswordHr") as HTMLElement;
         this.passwordInput = this.dialog.element.querySelector("#sharePassword") as HTMLInputElement;
         this.expireDaysInput = this.dialog.element.querySelector("#shareExpireDays") as HTMLInputElement;
-        this.publicCheckbox = this.dialog.element.querySelector("#sharePublic") as HTMLInputElement;
         this.confirmBtn = this.dialog.element.querySelector("#shareConfirmBtn") as HTMLButtonElement;
         this.copyBtn = this.dialog.element.querySelector("#shareCopyCurrentBtn");
         this.existingUrlInput = this.dialog.element.querySelector("#shareExistingUrl") as HTMLInputElement;
@@ -161,10 +149,8 @@ export class ShareDialog {
             : config.defaultExpireDays;
         this.expireDaysInput.value = String(expireValue);
 
-        this.publicCheckbox.checked = hasActive ? !!this.existingRecord?.isPublic : config.defaultPublic;
-
         this.confirmBtn.textContent = hasActive
-            ? this.plugin.i18n.shareDialogUpdateConfirm
+            ? this.plugin.i18n.shareDialogUpdate
             : this.plugin.i18n.shareDialogConfirm;
 
         const existingInfo = this.dialog.element.querySelector("#shareExistingInfo") as HTMLElement;
@@ -186,8 +172,9 @@ export class ShareDialog {
         if (this.cancelShareBtn) {
             this.cancelShareBtn.style.display = hasActive ? "" : "none";
         }
+        // 单文档分享对话框不显示"关闭全部分享"按钮
         if (this.closeAllBtn) {
-            this.closeAllBtn.style.display = records.length > 0 ? "" : "none";
+            this.closeAllBtn.style.display = "none";
         }
     }
 
@@ -241,7 +228,7 @@ export class ShareDialog {
         const password = this.passwordInput.value.trim();
         const expireDaysRaw = parseInt(this.expireDaysInput.value, 10);
         const expireDays = Number.isNaN(expireDaysRaw) ? 7 : Math.min(365, Math.max(1, expireDaysRaw));
-        const isPublic = this.publicCheckbox.checked;
+        const isPublic = !requirePassword; // 没有密码保护即为公开
 
         const isUpdating = this.hasActiveShare();
 

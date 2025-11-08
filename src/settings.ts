@@ -1,4 +1,5 @@
 import { Setting } from "siyuan";
+import { ShareListDialog } from "./components/share-list";
 import type SharePlugin from "./index";
 
 export interface ShareConfig {
@@ -83,18 +84,41 @@ export class ShareSettings {
         defaultPublicCheckbox.className = "b3-switch fn__flex-center";
         defaultPublicCheckbox.checked = this.config.defaultPublic;
 
-        // 创建 Setting 对象并传入保存回调
         const setting = new Setting({
             confirmCallback: async () => {
+                // 保存配置
                 this.config.serverUrl = serverUrlInput.value.trim();
                 this.config.apiToken = apiTokenInput.value.trim();
                 this.config.siyuanToken = siyuanTokenInput.value.trim();
                 this.config.defaultPassword = defaultPasswordCheckbox.checked;
                 this.config.defaultExpireDays = parseInt(defaultExpireInput.value) || 7;
                 this.config.defaultPublic = defaultPublicCheckbox.checked;
-                
                 await this.save();
             }
+        });
+
+        // 添加侧边菜单
+        this.addGeneralTab(setting, serverUrlInput, apiTokenInput, siyuanTokenInput, defaultPasswordCheckbox, defaultExpireInput, defaultPublicCheckbox);
+
+        return setting;
+    }
+
+    private addGeneralTab(
+        setting: Setting,
+        serverUrlInput: HTMLInputElement,
+        apiTokenInput: HTMLInputElement,
+        siyuanTokenInput: HTMLInputElement,
+        defaultPasswordCheckbox: HTMLInputElement,
+        defaultExpireInput: HTMLInputElement,
+        defaultPublicCheckbox: HTMLInputElement
+    ): void {
+        // 创建常规设置标签页
+        setting.addItem({
+            title: "⚙️ " + (this.plugin.i18n.settingTabGeneral || "常规设置"),
+            createActionElement: () => {
+                const element = document.createElement("div");
+                return element;
+            },
         });
         
         // 服务端 URL
@@ -174,7 +198,34 @@ export class ShareSettings {
             createActionElement: () => defaultPublicCheckbox,
         });
 
-        return setting;
+        // 查看全部分享按钮
+        const viewSharesButton = document.createElement("button");
+        viewSharesButton.className = "b3-button b3-button--outline fn__block";
+        viewSharesButton.innerHTML = `
+            <svg class="b3-button__icon"><use xlink:href="#iconShare"></use></svg>
+            ${this.plugin.i18n.shareListTitle || "全部分享"}
+        `;
+        viewSharesButton.addEventListener("click", async () => {
+            // 检查配置
+            if (!this.isConfigured()) {
+                this.plugin.showMessage(
+                    this.plugin.i18n.shareErrorNotConfigured || "请先配置服务器信息",
+                    3000,
+                    "error"
+                );
+                return;
+            }
+            
+            // 弹出分享列表对话框
+            const shareListDialog = new ShareListDialog(this.plugin);
+            await shareListDialog.show();
+        });
+
+        setting.addItem({
+            title: this.plugin.i18n.shareListTitle || "全部分享",
+            description: this.plugin.i18n.shareListViewDesc || "查看和管理所有已创建的分享链接",
+            createActionElement: () => viewSharesButton,
+        });
     }
 
     isConfigured(): boolean {

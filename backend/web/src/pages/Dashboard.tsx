@@ -1,6 +1,7 @@
-import { ApiOutlined, CopyOutlined, DeleteOutlined, HomeOutlined, PlusOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons'
+import { ApiOutlined, CopyOutlined, DeleteOutlined, HomeOutlined, PlusOutlined, ReloadOutlined, ShareAltOutlined, UserOutlined } from '@ant-design/icons'
 import { Button, Card, Divider, Form, Input, message, Modal, Space, Table, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api'
 
 const { Title, Text, Paragraph } = Typography
@@ -9,6 +10,7 @@ interface ApiResp<T = any> { code: number; msg: string; data: T }
 interface TokenItem { id: string; name: string; revoked: boolean; createdAt: string; lastUsedAt?: string }
 
 function Dashboard() {
+  const navigate = useNavigate()
   const [user, setUser] = useState<any>(null)
   const [tokens, setTokens] = useState<TokenItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -190,7 +192,12 @@ function Dashboard() {
             <ApiOutlined style={{ marginRight: 12, color: '#1890ff' }} />
             个人仪表盘
           </Title>
-          <Button icon={<HomeOutlined />} href="/">返回首页</Button>
+          <Space>
+            <Button icon={<ShareAltOutlined />} onClick={() => navigate('/shares')}>
+              分享管理
+            </Button>
+            <Button icon={<HomeOutlined />} href="/">返回首页</Button>
+          </Space>
         </Space>
       </div>
 

@@ -3,6 +3,7 @@ import './App.css'
 import Dashboard from './pages/Dashboard'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound.tsx'
+import ShareList from './pages/ShareList'
 import ShareView from './pages/ShareView'
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/s/:shareId" element={<ShareView />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/shares" element={<ShareList />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
