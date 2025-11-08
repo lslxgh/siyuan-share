@@ -3,6 +3,7 @@ package controllers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -17,13 +18,22 @@ import (
 
 // CreateShareRequest 创建分享请求
 type CreateShareRequest struct {
-	DocID           string `json:"docId" binding:"required"`
-	DocTitle        string `json:"docTitle" binding:"required"`
-	Content         string `json:"content" binding:"required"`
-	RequirePassword bool   `json:"requirePassword"`
-	Password        string `json:"password"`
-	ExpireDays      int    `json:"expireDays" binding:"required,min=1,max=365"`
-	IsPublic        bool   `json:"isPublic"`
+	DocID           string              `json:"docId" binding:"required"`
+	DocTitle        string              `json:"docTitle" binding:"required"`
+	Content         string              `json:"content" binding:"required"`
+	RequirePassword bool                `json:"requirePassword"`
+	Password        string              `json:"password"`
+	ExpireDays      int                 `json:"expireDays" binding:"required,min=1,max=365"`
+	IsPublic        bool                `json:"isPublic"`
+	References      []BlockReferenceReq `json:"references"` // 引用块数据
+}
+
+// BlockReferenceReq 引用块请求数据
+type BlockReferenceReq struct {
+	BlockID     string `json:"blockId"`
+	Content     string `json:"content"`
+	DisplayText string `json:"displayText,omitempty"`
+	RefCount    int    `json:"refCount,omitempty"`
 }
 
 // CreateShareResponse 创建分享响应
@@ -122,6 +132,21 @@ func CreateShare(c *gin.Context) {
 	share.IsPublic = req.IsPublic
 	share.ExpireAt = time.Now().AddDate(0, 0, req.ExpireDays)
 
+	// 处理引用块数据
+	if len(req.References) > 0 {
+		refsJSON, err := json.Marshal(req.References)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code": 1,
+				"msg":  "Failed to serialize references: " + err.Error(),
+			})
+			return
+		}
+		share.References = string(refsJSON)
+	} else {
+		share.References = ""
+	}
+
 	if req.RequirePassword {
 		if password != "" {
 			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -177,6 +202,44 @@ func CreateShare(c *gin.Context) {
 		baseURL = proto + "://" + strings.TrimSuffix(host, "/")
 	}
 	shareURL := strings.TrimSuffix(baseURL, "/") + "/s/" + share.ID
+
+	// 为引用块创建子分享
+	if len(req.References) > 0 {
+		for _, ref := range req.References {
+			// 检查是否已存在该块的分享(通过 docId = blockId 查找)
+			existingBlockShare, _ := models.FindActiveShareByDoc(userIDStr, ref.BlockID)
+
+			// 生成引用块标题
+			blockTitle := generateBlockTitle(ref)
+
+			var blockShare *models.Share
+			if existingBlockShare != nil && !existingBlockShare.IsExpired() {
+				// 更新已有的块分享
+				blockShare = existingBlockShare
+				blockShare.DocTitle = blockTitle
+				blockShare.Content = ref.Content
+				blockShare.ExpireAt = share.ExpireAt
+				blockShare.ParentShareID = share.ID
+				models.DB.Save(blockShare)
+			} else {
+				// 创建新的块分享
+				blockShare = &models.Share{
+					ID:            generateShareID(),
+					UserID:        userIDStr,
+					DocID:         ref.BlockID, // 使用 blockId 作为 docId
+					DocTitle:      blockTitle,
+					Content:       ref.Content,
+					ParentShareID: share.ID,
+					// 继承父分享的密码和过期时间
+					RequirePassword: share.RequirePassword,
+					PasswordHash:    share.PasswordHash,
+					ExpireAt:        share.ExpireAt,
+					IsPublic:        share.IsPublic,
+				}
+				models.DB.Create(blockShare)
+			}
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": 0,
@@ -395,4 +458,44 @@ func generateShareID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// generateBlockTitle 生成引用块的标题
+func generateBlockTitle(ref BlockReferenceReq) string {
+	// 优先使用显示文本
+	if ref.DisplayText != "" {
+		return ref.DisplayText
+	}
+
+	// 使用内容的第一行作为标题
+	if ref.Content != "" {
+		lines := strings.Split(ref.Content, "\n")
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			// 跳过空行和 Markdown 标记
+			if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+				// 限制标题长度
+				if len(trimmed) > 50 {
+					return trimmed[:50] + "..."
+				}
+				return trimmed
+			}
+		}
+
+		// 如果所有行都是标题或空行,使用第一个非空行
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" {
+				// 移除 Markdown 标题标记
+				trimmed = strings.TrimLeft(trimmed, "# ")
+				if len(trimmed) > 50 {
+					return trimmed[:50] + "..."
+				}
+				return trimmed
+			}
+		}
+	}
+
+	// 降级使用 blockId
+	return "引用块"
 }

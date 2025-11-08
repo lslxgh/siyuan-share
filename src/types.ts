@@ -7,6 +7,24 @@ export interface ShareOptions {
     isPublic: boolean;
 }
 
+/**
+ * 引用块信息
+ */
+export interface BlockReference {
+    blockId: string;
+    content: string;
+    displayText?: string;
+    refCount?: number;
+}
+
+/**
+ * 文档内容及其引用块
+ */
+export interface DocContentWithRefs {
+    content: string;
+    references: BlockReference[];
+}
+
 export interface ShareRecord {
     id: string;
     docId: string;
@@ -49,6 +67,36 @@ export interface SiyuanKernelResponse<T = any> {
     code: number;
     msg: string;
     data: T;
+}
+
+/**
+ * Kramdown API 响应格式
+ */
+export interface KramdownResponse {
+    code: number;
+    msg: string;
+    data: {
+        id: string;
+        kramdown: string;
+    };
+}
+
+/**
+ * 块属性查询响应
+ */
+export interface BlockAttrsResponse {
+    code: number;
+    msg: string;
+    data: Record<string, string>;
+}
+
+/**
+ * SQL 查询响应
+ */
+export interface SqlQueryResponse {
+    code: number;
+    msg: string;
+    data: Array<Record<string, any>>;
 }
 
 export interface BatchDeleteShareResponseData {

@@ -75,5 +75,8 @@
   "shareErrorNotConfigured": "请先在插件设置中配置服务端地址与 API Token",
   "shareErrorSiyuanTokenMissing": "请先在插件设置中配置思源内核 Token（设置 -> 关于 -> API token）",
   "shareErrorExportFailed": "导出文档内容失败，请检查文档是否可用",
-  "shareErrorNetworkFailed": "网络请求失败"
+  "shareErrorNetworkFailed": "网络请求失败",
+  "kramdownApiFailed": "获取文档源码失败，请检查思源内核 API 是否正常",
+  "kramdownParseError": "文档格式解析失败，请查看控制台日志",
+  "kramdownTimeout": "文档导出超时，请稍后重试"
 }

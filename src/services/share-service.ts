@@ -1,5 +1,8 @@
+import { showMessage } from "siyuan";
 import type SharePlugin from "../index";
-import type { BatchDeleteShareResponse, ShareOptions, ShareRecord, ShareResponse } from "../types";
+import type { BatchDeleteShareResponse, BlockReference, KramdownResponse, ShareOptions, ShareRecord, ShareResponse } from "../types";
+import { BlockReferenceResolver } from "../utils/block-reference-resolver";
+import { parseKramdownToMarkdown } from "../utils/kramdown-parser";
 
 export class ShareService {
     private plugin: SharePlugin;
@@ -26,8 +29,8 @@ export class ShareService {
             throw new Error(this.plugin.i18n.shareErrorSiyuanTokenMissing || "请先配置思源内核 Token");
         }
 
-        // 1. 导出文档内容
-        const content = await this.exportDocContent(options.docId);
+        // 1. 导出文档内容及引用块
+        const { content, references } = await this.exportDocContentWithRefs(options.docId);
         if (!content) {
             throw new Error(this.plugin.i18n.shareErrorExportFailed);
         }
@@ -41,6 +44,7 @@ export class ShareService {
             password: options.requirePassword ? options.password ?? "" : "",
             expireDays: options.expireDays,
             isPublic: options.isPublic,
+            references: references, // 包含引用块信息
         };
 
         // 3. 调用后端 API
@@ -76,7 +80,99 @@ export class ShareService {
     }
 
     /**
-     * 导出文档内容
+     * 导出文档内容及引用块(使用 Kramdown 源码)
+     * @returns 文档内容和引用块列表
+     */
+    private async exportDocContentWithRefs(docId: string): Promise<{ content: string; references: BlockReference[] }> {
+        const config = this.plugin.settings.getConfig();
+        
+        try {
+            // 1. 获取文档的 Kramdown 内容
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20_000);
+            
+            const response = await fetch("/api/block/getBlockKramdown", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Token ${config.siyuanToken}`,
+                },
+                body: JSON.stringify({ 
+                    id: docId,
+                    mode: "md"
+                }),
+                signal: controller.signal,
+            });
+            
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+                const errorMsg = `Kramdown API 调用失败: HTTP ${response.status} ${response.statusText}`;
+                console.error(errorMsg);
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
+                return { content: "", references: [] };
+            }
+
+            const result: KramdownResponse = await response.json();
+            
+            if (result.code !== 0) {
+                const errorMsg = `Kramdown API 返回错误: ${result.msg || '未知错误'}`;
+                console.error(errorMsg, { docId, code: result.code });
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
+                return { content: "", references: [] };
+            }
+            
+            if (!result.data || !result.data.kramdown) {
+                console.error("Kramdown API 返回数据为空", { docId, data: result.data });
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
+                return { content: "", references: [] };
+            }
+
+            const kramdownContent = result.data.kramdown;
+
+            // 2. 解析文档中的所有引用块
+            const resolver = new BlockReferenceResolver({
+                siyuanToken: config.siyuanToken,
+                maxDepth: 5,
+            });
+
+            const references = await resolver.resolveDocumentReferences(kramdownContent);
+
+            console.debug("文档引用解析完成:", {
+                docId,
+                引用块数量: references.length,
+                引用块ID列表: references.map(r => r.blockId),
+            });
+
+            // 3. 将 Kramdown 转换为 Markdown
+            const markdown = parseKramdownToMarkdown(kramdownContent);
+            
+            if (!markdown) {
+                console.error("Kramdown 解析结果为空", { docId, kramdownLength: kramdownContent.length });
+                showMessage(this.plugin.i18n.kramdownParseError, 4000, "error");
+                return { content: "", references: [] };
+            }
+
+            return { content: markdown, references };
+        } catch (error) {
+            console.error("导出文档时发生异常:", error, { docId });
+            
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    showMessage(this.plugin.i18n.kramdownTimeout, 4000, "error");
+                } else {
+                    showMessage(this.plugin.i18n.kramdownApiFailed + ": " + error.message, 4000, "error");
+                }
+            } else {
+                showMessage(this.plugin.i18n.shareErrorUnknown, 4000, "error");
+            }
+            
+            return { content: "", references: [] };
+        }
+    }
+
+    /**
+     * 导出文档内容(使用 Kramdown 源码) - 旧版方法,保留用于向后兼容
      */
     private async exportDocContent(docId: string): Promise<string | null> {
         // 短期缓存命中（60s）
@@ -91,35 +187,88 @@ export class ShareService {
         const config = this.plugin.settings.getConfig();
         
         try {
-            // 使用思源内核 Token 调用内部 API
+            // 使用思源内核 Token 调用 Kramdown API
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 20_000);
-            const response = await fetch("/api/export/exportMdContent", {
+            
+            const response = await fetch("/api/block/getBlockKramdown", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Token ${config.siyuanToken}`,
                 },
-                body: JSON.stringify({ id: docId }),
+                body: JSON.stringify({ 
+                    id: docId,
+                    mode: "md" // 使用 md 模式，链接 URL 不编码空格
+                }),
                 signal: controller.signal,
             });
+            
+            clearTimeout(timeout);
 
             if (!response.ok) {
-                console.error("Export failed:", response.status, response.statusText);
+                const errorMsg = `Kramdown API 调用失败: HTTP ${response.status} ${response.statusText}`;
+                console.error(errorMsg);
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
                 return null;
             }
 
-            const result = await response.json();
-            if (result.code === 0 && result.data && result.data.content) {
-                // 清理内容中的元数据
-                const cleaned = this.cleanMarkdownContent(result.data.content);
-                this.contentCache.set(docId, { content: cleaned, ts: Date.now() });
-                return cleaned;
+            const result: KramdownResponse = await response.json();
+            
+            if (result.code !== 0) {
+                const errorMsg = `Kramdown API 返回错误: ${result.msg || '未知错误'}`;
+                console.error(errorMsg, { docId, code: result.code });
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
+                return null;
             }
             
-            return null;
+            if (!result.data || !result.data.kramdown) {
+                console.error("Kramdown API 返回数据为空", { docId, data: result.data });
+                showMessage(this.plugin.i18n.kramdownApiFailed, 4000, "error");
+                return null;
+            }
+
+            // 使用解析器将 Kramdown 转换为 Markdown
+            try {
+                const markdown = parseKramdownToMarkdown(result.data.kramdown);
+                
+                if (!markdown) {
+                    console.error("Kramdown 解析结果为空", { docId, kramdownLength: result.data.kramdown.length });
+                    showMessage(this.plugin.i18n.kramdownParseError, 4000, "error");
+                    return null;
+                }
+                
+                // 缓存转换后的内容
+                this.contentCache.set(docId, { content: markdown, ts: Date.now() });
+                console.debug("文档导出成功", { 
+                    docId, 
+                    kramdownLength: result.data.kramdown.length,
+                    markdownLength: markdown.length 
+                });
+                
+                return markdown;
+            } catch (parseError) {
+                console.error("Kramdown 解析失败:", parseError, { 
+                    docId, 
+                    kramdownPreview: result.data.kramdown.substring(0, 200) 
+                });
+                showMessage(this.plugin.i18n.kramdownParseError, 4000, "error");
+                return null;
+            }
         } catch (error) {
-            console.error("Export document failed:", error);
+            // 网络错误或超时
+            console.error("导出文档时发生异常:", error, { docId });
+            
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    showMessage(this.plugin.i18n.kramdownTimeout, 4000, "error");
+                } else {
+                    showMessage(this.plugin.i18n.kramdownApiFailed + ": " + error.message, 4000, "error");
+                }
+            } else {
+                showMessage(this.plugin.i18n.shareErrorUnknown, 4000, "error");
+            }
+            
             return null;
         } finally {
             this.contentPromiseCache.delete(docId);
@@ -130,61 +279,7 @@ export class ShareService {
         return p;
     }
 
-    /**
-     * 清理 Markdown 内容中的元数据
-     */
-    private cleanMarkdownContent(content: string): string {
-        const lines = content.split('\n');
-        const filteredLines: string[] = [];
-        let inFrontMatter = false;
-        let foundFirstContent = false;
-        
-        for (let i = 0; i < lines.length; i++) {
-            const trimmed = lines[i].trim();
-            
-            // 检测 YAML front matter 开始/结束
-            if (trimmed === '---') {
-                if (!foundFirstContent && i === 0) {
-                    // 文档开头的 ---，进入 front matter
-                    inFrontMatter = true;
-                    continue;
-                } else if (inFrontMatter) {
-                    // front matter 结束
-                    inFrontMatter = false;
-                    continue;
-                }
-            }
-            
-            // 跳过 front matter 内的所有内容
-            if (inFrontMatter) {
-                continue;
-            }
-            
-            // 跳过独立的元数据行（title:, date:, lastmod: 等）
-            if (!foundFirstContent && (
-                trimmed.startsWith('title:') || 
-                trimmed.startsWith('date:') || 
-                trimmed.startsWith('lastmod:'))) {
-                continue;
-            }
-            
-            // 跳过文档开头的第一个标题（如果与 docTitle 重复）
-            if (!foundFirstContent && trimmed.startsWith('#')) {
-                foundFirstContent = true;
-                continue;
-            }
-            
-            // 跳过开头的空行
-            if (!foundFirstContent && trimmed === '') {
-                continue;
-            }
-            
-            foundFirstContent = true;
-            filteredLines.push(lines[i]);
-        }
-        
-        return filteredLines.join('\n').trim();
-    }
+
 
     /**
      * 调用分享 API

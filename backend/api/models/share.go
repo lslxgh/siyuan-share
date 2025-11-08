@@ -15,6 +15,8 @@ type Share struct {
 	DocID           string         `gorm:"size:64;index:idx_user_doc,priority:2" json:"docId"`
 	DocTitle        string         `gorm:"size:255" json:"docTitle"`
 	Content         string         `gorm:"type:text" json:"content"`
+	References      string         `gorm:"type:text" json:"references"`        // JSON 字符串存储引用块信息
+	ParentShareID   string         `gorm:"size:64;index" json:"parentShareId"` // 父分享ID(引用块分享时使用)
 	RequirePassword bool           `gorm:"default:false" json:"requirePassword"`
 	PasswordHash    string         `gorm:"size:255" json:"-"` // 不在 JSON 中暴露
 	ExpireAt        time.Time      `gorm:"index" json:"expireAt"`
@@ -23,6 +25,14 @@ type Share struct {
 	CreatedAt       time.Time      `gorm:"index:idx_user_created,priority:2" json:"createdAt"`
 	UpdatedAt       time.Time      `json:"updatedAt"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// BlockReference 引用块信息
+type BlockReference struct {
+	BlockID     string `json:"blockId"`
+	Content     string `json:"content"`
+	DisplayText string `json:"displayText,omitempty"`
+	RefCount    int    `json:"refCount,omitempty"`
 }
 
 // TableName 指定表名

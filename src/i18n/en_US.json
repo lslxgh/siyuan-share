@@ -75,5 +75,8 @@
   "shareErrorNotConfigured": "Please configure Server URL and API Token in plugin settings first",
   "shareErrorSiyuanTokenMissing": "Please configure SiYuan Kernel Token in plugin settings first (Settings -> About -> API token)",
   "shareErrorExportFailed": "Failed to export document content. Please check if the document is accessible",
-  "shareErrorNetworkFailed": "Network request failed"
+  "shareErrorNetworkFailed": "Network request failed",
+  "kramdownApiFailed": "Failed to fetch document source. Please check if SiYuan kernel API is available",
+  "kramdownParseError": "Failed to parse document format. Please check console logs",
+  "kramdownTimeout": "Document export timeout. Please try again later"
 }
