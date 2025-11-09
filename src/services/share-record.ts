@@ -70,6 +70,105 @@ export class ShareRecordManager {
     }
 
     /**
+     * 强制从后端拉取指定文档的最新分享记录（不依赖本地缓存）
+     * - 若找到，则更新本地缓存并返回
+     * - 若未找到，则移除本地该文档的旧记录（视为已删除或过期）
+     * - 后端未配置时回退到本地缓存
+     */
+    async fetchRecordByDocId(docId: string): Promise<ShareRecord | null> {
+        const config = this.plugin.settings.getConfig();
+        if (!config.serverUrl || !config.apiToken) {
+            return this.getRecordByDocId(docId);
+        }
+
+        const base = config.serverUrl.replace(/\/$/, "");
+        let page = 1;
+        const size = 50; // 单次请求数量，兼顾速度与分页次数
+        let total = 0;
+        let found: ShareRecord | null = null;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12_000);
+        try {
+            while (true) {
+                const resp = await fetch(`${base}/api/share/list?page=${page}&size=${size}` , {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${config.apiToken}`,
+                        "X-Base-URL": base,
+                    },
+                    signal: controller.signal,
+                });
+                if (!resp.ok) {
+                    // 网络错误直接停止，返回本地旧记录
+                    break;
+                }
+                const result = await resp.json();
+                if (result.code !== 0) {
+                    // 后端返回错误，停止
+                    break;
+                }
+                total = result.data?.total || 0;
+                const items = (result.data?.items || []) as any[];
+                for (const it of items) {
+                    if (it.docId === docId) {
+                        found = {
+                            id: it.id,
+                            docId: it.docId,
+                            docTitle: it.docTitle,
+                            shareUrl: it.shareUrl,
+                            requirePassword: it.requirePassword,
+                            expireAt: new Date(it.expireAt).getTime(),
+                            isPublic: it.isPublic,
+                            createdAt: new Date(it.createdAt).getTime(),
+                            updatedAt: new Date(it.createdAt).getTime(),
+                            viewCount: it.viewCount,
+                        };
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+                // 没找到且已到末尾页 -> 结束
+                if (items.length === 0 || page * size >= total || total === 0) {
+                    break;
+                }
+                page++;
+            }
+        } catch (e) {
+            // 超时或其他错误，回退至本地记录
+        } finally {
+            clearTimeout(timeout);
+        }
+
+        if (found) {
+            // 更新/替换本地缓存记录
+            const idxByDoc = this.records.findIndex(r => r.docId === docId);
+            if (idxByDoc >= 0) {
+                this.records[idxByDoc] = found;
+            } else {
+                // 移除同 shareId 的旧记录再添加（保持唯一性）
+                const idxById = this.records.findIndex(r => r.id === found!.id);
+                if (idxById >= 0) {
+                    this.records[idxById] = found;
+                } else {
+                    this.records.push(found);
+                }
+            }
+            await this.saveToLocal();
+            return found;
+        } else {
+            // 未找到则删除本地该文档的记录（避免显示过期或已删除的链接）
+            const beforeLen = this.records.length;
+            this.records = this.records.filter(r => r.docId !== docId);
+            if (this.records.length !== beforeLen) {
+                await this.saveToLocal();
+            }
+            return null;
+        }
+    }
+
+    /**
      * 添加分享记录
      */
     async addRecord(record: ShareRecord): Promise<void> {

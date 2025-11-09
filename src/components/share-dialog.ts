@@ -42,9 +42,20 @@ export class ShareDialog {
 
     async show(): Promise<void> {
         const config = this.plugin.settings.getConfig();
-        const record = this.plugin.shareRecordManager.getRecordByDocId(this.docId);
-        if (record && record.expireAt > Date.now()) {
-            this.existingRecord = record;
+        // 每次打开对话框强制向后端获取最新状态，避免仅依赖本地缓存
+        try {
+            const latest = await this.plugin.shareRecordManager.fetchRecordByDocId(this.docId);
+            if (latest && latest.expireAt > Date.now()) {
+                this.existingRecord = latest;
+            } else {
+                this.existingRecord = null;
+            }
+        } catch (e) {
+            // 回退：使用本地缓存，保证对话框可用
+            const record = this.plugin.shareRecordManager.getRecordByDocId(this.docId);
+            if (record && record.expireAt > Date.now()) {
+                this.existingRecord = record;
+            }
         }
 
         const dialogContent = `
