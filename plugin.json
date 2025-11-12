@@ -2,7 +2,7 @@
   "name": "siyuan-share",
   "author": "Zero",
   "url": "https://github.com/ZeroHawkeye/siyuan-share",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "minAppVersion": "3.3.0",
   "backends": [
     "all"
