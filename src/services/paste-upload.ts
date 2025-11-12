@@ -12,7 +12,7 @@ export class PasteUploadService {
     private s3Service: S3UploadService | null = null;
     private pasteHandler: ((evt: ClipboardEvent) => void) | null = null;
     private processing: boolean = false; // 防抖，避免递归/重复处理
-    private hashCache: Map<string, { url: string; record: any } > = new Map(); // 哈希 -> 资源映射缓存
+    private hashCache: Map<string, { url: string; record: any }> = new Map(); // 哈希 -> 资源映射缓存
 
     constructor(plugin: SharePlugin) {
         this.plugin = plugin;
@@ -38,8 +38,8 @@ export class PasteUploadService {
         this.pasteHandler = (evt: ClipboardEvent) => {
             this.handleDOMPaste(evt);
         };
-        document.addEventListener('paste', this.pasteHandler, true);
-        
+        document.addEventListener("paste", this.pasteHandler, true);
+
         console.log("粘贴上传功能已启用");
     }
 
@@ -53,12 +53,12 @@ export class PasteUploadService {
 
         // 移除 DOM 粘贴事件监听
         if (this.pasteHandler) {
-            document.removeEventListener('paste', this.pasteHandler, true);
+            document.removeEventListener("paste", this.pasteHandler, true);
             this.pasteHandler = null;
         }
         // 清理缓存
         this.hashCache.clear();
-        
+
         console.log("粘贴上传功能已禁用");
     }
 
@@ -80,7 +80,7 @@ export class PasteUploadService {
             if (clipboardData.items && clipboardData.items.length > 0) {
                 for (let i = 0; i < clipboardData.items.length; i++) {
                     const it = clipboardData.items[i];
-                    if (it.kind === 'file') {
+                    if (it.kind === "file") {
                         const f = it.getAsFile();
                         if (f) files.push(f);
                     }
@@ -103,7 +103,7 @@ export class PasteUploadService {
             this.processing = true;
             await this.uploadAndInsertFiles(supportedFiles);
         } catch (e) {
-            console.error('处理 DOM 粘贴事件失败:', e);
+            console.error("处理 DOM 粘贴事件失败:", e);
         } finally {
             this.processing = false;
         }
@@ -117,8 +117,8 @@ export class PasteUploadService {
         if (!node) return false;
         // 若是元素，直接向上查找
         const isEditorEl = (el: HTMLElement) => (
-            el.classList.contains('protyle-wysiwyg') ||
-            el.classList.contains('protyle')
+            el.classList.contains("protyle-wysiwyg") ||
+            el.classList.contains("protyle")
         );
 
         let current: Node | null = node;
@@ -127,12 +127,12 @@ export class PasteUploadService {
             if (current instanceof HTMLElement) {
                 if (isEditorEl(current)) return true;
             }
-            current = current.parentNode || (current instanceof HTMLElement ? current.closest?.('.protyle, .protyle-wysiwyg') || null : null);
+            current = current.parentNode || (current instanceof HTMLElement ? current.closest?.(".protyle, .protyle-wysiwyg") || null : null);
             steps++;
         }
         // 降级：尝试通过 activeElement 判断（用户已聚焦编辑器）
         const active = document.activeElement as HTMLElement | null;
-        if (active && (active.closest?.('.protyle-wysiwyg') || active.closest?.('.protyle'))) return true;
+        if (active && (active.closest?.(".protyle-wysiwyg") || active.closest?.(".protyle"))) return true;
         return false;
     }
 
@@ -160,15 +160,15 @@ export class PasteUploadService {
                 }
                 toUpload.push({ file, hash });
             } catch (e) {
-                console.warn('哈希分类失败，标记为待上传', e);
-                toUpload.push({ file, hash: 'unknown-' + Date.now() });
+                console.warn("哈希分类失败，标记为待上传", e);
+                toUpload.push({ file, hash: "unknown-" + Date.now() });
             }
         }
 
         // 无需上传（全复用）直接插入最终 Markdown
         if (toUpload.length === 0) {
             if (reusedRecords.length > 0) {
-                showMessage(`已复用 ${reusedRecords.length} 个文件`, 2000, 'info');
+                showMessage(`已复用 ${reusedRecords.length} 个文件`, 2000, "info");
                 await this.insertToEditor(reusedRecords);
             }
             return;
@@ -178,16 +178,16 @@ export class PasteUploadService {
         const placeholderLines: string[] = [];
         // 已复用部分
         if (reusedRecords.length > 0) {
-            placeholderLines.push(...this.formatLinks(reusedRecords).split('\n'));
+            placeholderLines.push(...this.formatLinks(reusedRecords).split("\n"));
         }
         // 待上传部分
         for (const item of toUpload) {
             const fileName = item.file.name;
-            const isImage = item.file.type.startsWith('image/');
+            const isImage = item.file.type.startsWith("image/");
             const proto = `uploading://${item.hash}`;
             placeholderLines.push(isImage ? `![${fileName}](${proto})` : `[${fileName}](${proto})`);
         }
-        const placeholderMarkdown = placeholderLines.join('\n');
+        const placeholderMarkdown = placeholderLines.join("\n");
 
         // 插入占位符块并获取块 ID（优先使用 API 方式保证可更新）
         const placeholderBlockId = await this.insertMarkdownBlockAndGetId(placeholderMarkdown);
@@ -196,7 +196,7 @@ export class PasteUploadService {
             const uploadingMsgFallback = toUpload.length === 1
                 ? `正在上传 ${toUpload[0].file.name}...`
                 : `正在上传 ${toUpload.length} 个文件...`;
-            showMessage(uploadingMsgFallback, 2000, 'info');
+            showMessage(uploadingMsgFallback, 2000, "info");
             const uploadedRecords: Array<{ file: File; url: string }> = [];
             for (const item of toUpload) {
                 try {
@@ -204,7 +204,7 @@ export class PasteUploadService {
                         item.file,
                         item.file.name,
                         undefined,
-                        item.hash.startsWith('unknown-') ? undefined : item.hash
+                        item.hash.startsWith("unknown-") ? undefined : item.hash
                     );
                     uploadedRecords.push({ file: item.file, url: record.s3Url });
                     this.hashCache.set(record.hash, { url: record.s3Url, record });
@@ -219,9 +219,9 @@ export class PasteUploadService {
                 const reuseCount = reusedRecords.length;
                 const upCount = uploadedRecords.length;
                 if (upCount > 0 && reuseCount > 0) {
-                    showMessage(`已复用 ${reuseCount} 个，成功上传 ${upCount} 个`, 2400, 'info');
+                    showMessage(`已复用 ${reuseCount} 个，成功上传 ${upCount} 个`, 2400, "info");
                 } else if (upCount > 0) {
-                    showMessage(`成功上传 ${upCount} 个文件`, 2000, 'info');
+                    showMessage(`成功上传 ${upCount} 个文件`, 2000, "info");
                 }
             }
             return;
@@ -231,7 +231,7 @@ export class PasteUploadService {
         const uploadingMsg = toUpload.length === 1
             ? `正在上传 ${toUpload[0].file.name}...`
             : `正在上传 ${toUpload.length} 个文件...`;
-        showMessage(uploadingMsg, 1800, 'info');
+        showMessage(uploadingMsg, 1800, "info");
 
         // 可变的行数组（就地修改）
         const currentLines = [...placeholderLines];
@@ -247,16 +247,16 @@ export class PasteUploadService {
                     item.file.name,
                     (progress) => {
                         // 可选择后续增加进度显示，目前仅在控制台
-                        if (progress.status === 'uploading' && progress.percentage % 25 === 0) {
+                        if (progress.status === "uploading" && progress.percentage % 25 === 0) {
                             console.log(`${item.file.name} 上传进度 ${progress.percentage}%`);
                         }
                     },
-                    item.hash.startsWith('unknown-') ? undefined : item.hash
+                    item.hash.startsWith("unknown-") ? undefined : item.hash
                 );
                 this.hashCache.set(record.hash, { url: record.s3Url, record });
                 await this.saveAssetRecord(record);
                 // 用最终链接替换占位符行
-                const isImage = item.file.type.startsWith('image/');
+                const isImage = item.file.type.startsWith("image/");
                 currentLines[lineIndex] = isImage ? `![${item.file.name}](${record.s3Url})` : `[${item.file.name}](${record.s3Url})`;
                 uploadedCount++;
             } catch (error) {
@@ -264,16 +264,16 @@ export class PasteUploadService {
                 currentLines[lineIndex] = `上传失败: ${item.file.name}`;
             }
             // 每次上传完成后更新块内容
-            await this.updateBlockMarkdown(placeholderBlockId, currentLines.join('\n'));
+            await this.updateBlockMarkdown(placeholderBlockId, currentLines.join("\n"));
         }
 
         // 最终提示
         if (uploadedCount > 0 && reusedRecords.length > 0) {
-            showMessage(`已复用 ${reusedRecords.length} 个，成功上传 ${uploadedCount} 个`, 2400, 'info');
+            showMessage(`已复用 ${reusedRecords.length} 个，成功上传 ${uploadedCount} 个`, 2400, "info");
         } else if (uploadedCount > 0) {
-            showMessage(`成功上传 ${uploadedCount} 个文件`, 2000, 'info');
+            showMessage(`成功上传 ${uploadedCount} 个文件`, 2000, "info");
         } else {
-            showMessage('全部上传失败，请稍后重试', 3000, 'error');
+            showMessage("全部上传失败，请稍后重试", 3000, "error");
         }
     }
 
@@ -293,7 +293,7 @@ export class PasteUploadService {
             }
             console.log(`粘贴上传哈希缓存已构建: ${this.hashCache.size} 条`);
         } catch (e) {
-            console.warn('构建哈希缓存失败', e);
+            console.warn("构建哈希缓存失败", e);
         }
     }
 
@@ -303,14 +303,14 @@ export class PasteUploadService {
     private isSupportedFile(file: File): boolean {
         // 支持图片、视频、音频和常见文档
         const supportedTypes = [
-            'image/',
-            'video/',
-            'audio/',
-            'application/pdf',
-            'application/zip',
-            'application/x-zip-compressed',
-            'text/plain',
-            'text/markdown',
+            "image/",
+            "video/",
+            "audio/",
+            "application/pdf",
+            "application/zip",
+            "application/x-zip-compressed",
+            "text/plain",
+            "text/markdown",
         ];
 
         return supportedTypes.some(type => file.type.startsWith(type));
@@ -322,8 +322,8 @@ export class PasteUploadService {
     private async saveAssetRecord(record: any): Promise<void> {
         try {
             // 使用特殊的 docId 标记为粘贴上传的资源
-            const docId = 'paste-upload';
-            const shareId = 'paste-upload';
+            const docId = "paste-upload";
+            const shareId = "paste-upload";
 
             const mapping = this.plugin.assetRecordManager.getMapping(docId);
             if (mapping) {
@@ -355,10 +355,10 @@ export class PasteUploadService {
         const safeRecords = (records || []).filter(r => r && r.url);
         const toImage = (nameOrUrl: string) => /\.(png|jpe?g|gif|webp|svg)$/i.test(nameOrUrl);
         return safeRecords.map(r => {
-            const fileName = r?.file?.name || decodeURIComponent(r.url.split('/').pop() || 'file');
-            const isImage = r?.file?.type ? r.file.type.startsWith('image/') : toImage(fileName) || toImage(r.url);
+            const fileName = r?.file?.name || decodeURIComponent(r.url.split("/").pop() || "file");
+            const isImage = r?.file?.type ? r.file.type.startsWith("image/") : toImage(fileName) || toImage(r.url);
             return isImage ? `![${fileName}](${r.url})` : `[${fileName}](${r.url})`;
-        }).join('\n');
+        }).join("\n");
     }
 
     /**
@@ -370,13 +370,13 @@ export class PasteUploadService {
                 await navigator.clipboard.writeText(text);
             } else {
                 // 降级方案
-                const textarea = document.createElement('textarea');
+                const textarea = document.createElement("textarea");
                 textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
+                textarea.style.position = "fixed";
+                textarea.style.opacity = "0";
                 document.body.appendChild(textarea);
                 textarea.select();
-                document.execCommand('copy');
+                document.execCommand("copy");
                 document.body.removeChild(textarea);
             }
         } catch (error) {
@@ -404,21 +404,21 @@ export class PasteUploadService {
             // 格式化为 Markdown 插入
             const markdown = this.formatLinks(records);
             if (!markdown) {
-                showMessage('未生成可插入内容，请重试粘贴', 3000, 'error');
+                showMessage("未生成可插入内容，请重试粘贴", 3000, "error");
                 return;
             }
-            
+
             // 确保编辑器获得焦点
             // 使用元素 focus 而非未声明的 protyle.focus 方法
-            try { (activeEditor.protyle.element as HTMLElement | null)?.focus(); } catch (_) {}
+            try { (activeEditor.protyle.element as HTMLElement | null)?.focus(); } catch (_) { /* empty */ }
             // 方式1：尝试使用 execCommand 粘贴 Markdown（让内置解析处理）
             let inserted = false;
             try {
-                if (document.queryCommandSupported?.('insertText')) {
+                if (document.queryCommandSupported?.("insertText")) {
                     activeEditor.protyle.element?.focus();
-                    inserted = document.execCommand('insertText', false, markdown);
+                    inserted = document.execCommand("insertText", false, markdown);
                 }
-            } catch (_) {}
+            } catch (_) { /* empty */ }
 
             // 方式2：直接向当前光标所在块后插入一个 markdown 块（调用思源内核 API）
             if (!inserted) {
@@ -426,25 +426,25 @@ export class PasteUploadService {
                     const config = this.plugin.settings.getConfig();
                     // 获取当前 rootID，用于 fallback 插入
                     const rootID = activeEditor?.protyle?.block?.rootID;
-                    const response = await fetch('/api/block/insertBlock', {
-                        method: 'POST',
+                    const response = await fetch("/api/block/insertBlock", {
+                        method: "POST",
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Token ${config.siyuanToken}`,
+                            "Content-Type": "application/json",
+                            "Authorization": `Token ${config.siyuanToken}`,
                         },
                         body: JSON.stringify({
-                            dataType: 'markdown',
+                            dataType: "markdown",
                             data: markdown,
                             parentID: rootID,
-                            previousID: '',
+                            previousID: "",
                         })
                     });
-                    const result = await response.json().catch(()=>({}));
+                    const result = await response.json().catch(() => ({}));
                     if (response.ok && result.code === 0) {
                         inserted = true;
                     }
                 } catch (e) {
-                    console.warn('通过 API 插入失败', e);
+                    console.warn("通过 API 插入失败", e);
                 }
             }
 
@@ -455,14 +455,14 @@ export class PasteUploadService {
                     if (sel && sel.rangeCount > 0) {
                         const range = sel.getRangeAt(0);
                         range.deleteContents();
-                        range.insertNode(document.createTextNode('\n' + markdown + '\n'));
+                        range.insertNode(document.createTextNode("\n" + markdown + "\n"));
                         inserted = true;
                     }
-                } catch (_) {}
+                } catch (_) { /* empty */ }
             }
 
             if (!inserted) {
-                showMessage('插入内容失败，请手动粘贴', 3000, 'error');
+                showMessage("插入内容失败，请手动粘贴", 3000, "error");
             }
         } catch (error) {
             console.error("插入到编辑器失败:", error);
@@ -483,27 +483,27 @@ export class PasteUploadService {
             const rootID = activeEditor?.protyle?.block?.rootID;
             if (!rootID) return null;
             const config = this.plugin.settings.getConfig();
-            const response = await fetch('/api/block/insertBlock', {
-                method: 'POST',
+            const response = await fetch("/api/block/insertBlock", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Token ${config.siyuanToken}`,
+                    "Content-Type": "application/json",
+                    "Authorization": `Token ${config.siyuanToken}`,
                 },
                 body: JSON.stringify({
-                    dataType: 'markdown',
+                    dataType: "markdown",
                     data: markdown,
                     parentID: rootID,
-                    previousID: '',
-                    nextID: ''
+                    previousID: "",
+                    nextID: ""
                 })
             });
-            const result = await response.json().catch(()=>({}));
+            const result = await response.json().catch(() => ({}));
             if (response.ok && result.code === 0 && Array.isArray(result.data)) {
                 // 寻找 insert 操作中的 id
                 for (const opWrap of result.data) {
                     if (opWrap.doOperations) {
                         for (const op of opWrap.doOperations) {
-                            if (op.action === 'insert' && op.id) {
+                            if (op.action === "insert" && op.id) {
                                 return op.id as string;
                             }
                         }
@@ -512,7 +512,7 @@ export class PasteUploadService {
             }
             return null;
         } catch (e) {
-            console.warn('插入占位符块失败', e);
+            console.warn("插入占位符块失败", e);
             return null;
         }
     }
@@ -523,23 +523,23 @@ export class PasteUploadService {
     private async updateBlockMarkdown(blockId: string, markdown: string): Promise<boolean> {
         try {
             const config = this.plugin.settings.getConfig();
-            const response = await fetch('/api/block/updateBlock', {
-                method: 'POST',
+            const response = await fetch("/api/block/updateBlock", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Token ${config.siyuanToken}`,
+                    "Content-Type": "application/json",
+                    "Authorization": `Token ${config.siyuanToken}`,
                 },
                 body: JSON.stringify({
                     id: blockId,
-                    dataType: 'markdown',
+                    dataType: "markdown",
                     data: markdown
                 })
             });
-            const result = await response.json().catch(()=>({}));
+            const result = await response.json().catch(() => ({}));
             if (response.ok && result.code === 0) return true;
             return false;
         } catch (e) {
-            console.warn('更新占位符块失败', e);
+            console.warn("更新占位符块失败", e);
             return false;
         }
     }
@@ -556,30 +556,30 @@ export class PasteUploadService {
                 return el && el.contains(document.activeElement);
             }) || editors[0];
             if (!activeEditor?.protyle) return;
-            try { (activeEditor.protyle.element as HTMLElement | null)?.focus(); } catch (_) {}
+            try { (activeEditor.protyle.element as HTMLElement | null)?.focus(); } catch (_) { /* empty */ }
             let done = false;
             try {
-                if (document.queryCommandSupported?.('insertText')) {
+                if (document.queryCommandSupported?.("insertText")) {
                     activeEditor.protyle.element?.focus();
-                    done = document.execCommand('insertText', false, '\n' + text + '\n');
+                    done = document.execCommand("insertText", false, "\n" + text + "\n");
                 }
-            } catch (_) {}
+            } catch (_) { /* empty */ }
             if (!done) {
                 try {
                     const sel = window.getSelection();
                     if (sel && sel.rangeCount > 0) {
                         const range = sel.getRangeAt(0);
                         range.deleteContents();
-                        range.insertNode(document.createTextNode('\n' + text + '\n'));
+                        range.insertNode(document.createTextNode("\n" + text + "\n"));
                         done = true;
                     }
-                } catch (_) {}
+                } catch (_) { /* empty */ }
             }
             if (!done) {
-                showMessage('插入占位文本失败，请手动输入文件名', 3000, 'error');
+                showMessage("插入占位文本失败，请手动输入文件名", 3000, "error");
             }
         } catch (e) {
-            console.warn('插入失败占位文本出错', e);
+            console.warn("插入失败占位文本出错", e);
         }
     }
 

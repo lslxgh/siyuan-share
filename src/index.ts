@@ -1,7 +1,6 @@
 import {
     getAllEditor,
     getFrontend,
-    openSetting,
     Plugin,
     showMessage
 } from "siyuan";
@@ -40,7 +39,7 @@ export default class SharePlugin extends Plugin {
     async onload() {
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
-        
+
         // 添加分享图标
         this.addIcons(`<symbol id="iconShare" viewBox="0 0 32 32">
 <path d="M24 20c-1.607 0-3.04 0.78-3.947 1.973l-7.167-3.593c0.18-0.56 0.28-1.16 0.28-1.78 0-0.62-0.1-1.22-0.28-1.78l7.167-3.593c0.907 1.193 2.34 1.973 3.947 1.973 2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5c0 0.62 0.1 1.22 0.28 1.78l-7.167 3.593c-0.907-1.193-2.34-1.973-3.947-1.973-2.76 0-5 2.24-5 5s2.24 5 5 5c1.607 0 3.04-0.78 3.947-1.973l7.167 3.593c-0.18 0.56-0.28 1.16-0.28 1.78 0 2.76 2.24 5 5 5s5-2.24 5-5-2.24-5-5-5z"></path>
@@ -76,7 +75,7 @@ export default class SharePlugin extends Plugin {
         this.handleSwitchProtyle = (evt: any) => {
             try {
                 const rid = evt?.detail?.protyle?.block?.rootID;
-                if (typeof rid === 'string' && rid) {
+                if (typeof rid === "string" && rid) {
                     this.lastActiveRootId = rid;
                 }
             } catch (_) { /* ignore */ }
@@ -89,7 +88,7 @@ export default class SharePlugin extends Plugin {
                 const protyleEl = evt?.detail?.protyle?.element as HTMLElement | undefined;
                 const rid = evt?.detail?.protyle?.block?.rootID as string | undefined;
                 if (protyleEl && rid) {
-                    const activeWnd = document.querySelector('.layout__wnd--active') as HTMLElement | null;
+                    const activeWnd = document.querySelector(".layout__wnd--active") as HTMLElement | null;
                     if (activeWnd && activeWnd.contains(protyleEl)) {
                         this.lastActiveRootId = rid;
                     }
@@ -114,7 +113,7 @@ export default class SharePlugin extends Plugin {
                 click: async () => {
                     if (!this.settings.isConfigured()) {
                         showMessage(this.i18n.shareErrorNotConfigured, 4000, "error");
-                        openSetting(this.app);
+                        this.openSetting();
                         return;
                     }
                     const realTitle = await this.getDocTitle(docId);
@@ -131,7 +130,7 @@ export default class SharePlugin extends Plugin {
 
     onLayoutReady() {
         // 顶栏分享按钮
-        const shareTopBar = this.addTopBar({
+        this.addTopBar({
             icon: "iconShare",
             title: this.i18n.shareTopBarTitle || "Share",
             position: "right",
@@ -139,10 +138,10 @@ export default class SharePlugin extends Plugin {
                 const editor = this.getEditor();
                 if (!editor) return;
                 const docId = editor.protyle.block.rootID;
-                
+
                 if (!this.settings.isConfigured()) {
                     showMessage(this.i18n.shareErrorNotConfigured, 4000, "error");
-                    openSetting(this.app);
+                    this.openSetting();
                     return;
                 }
 
@@ -221,7 +220,7 @@ export default class SharePlugin extends Plugin {
         if (anchorNode) {
             const anchorEl = (anchorNode instanceof Element ? anchorNode : anchorNode.parentElement) as HTMLElement | null;
             if (anchorEl) {
-                const protyleRoot = anchorEl.closest?.('.protyle') as HTMLElement | null;
+                const protyleRoot = anchorEl.closest?.(".protyle") as HTMLElement | null;
                 if (protyleRoot) {
                     const foundBySelection = editors.find((e: any) => e?.protyle?.element === protyleRoot || (e?.protyle?.element as HTMLElement)?.contains(protyleRoot));
                     if (foundBySelection) return foundBySelection;
@@ -230,7 +229,7 @@ export default class SharePlugin extends Plugin {
         }
 
         // 2.5) 活动窗口内的编辑器（Siyuan 活动窗口类名）
-        const activeWnd = document.querySelector('.layout__wnd--active') as HTMLElement | null;
+        const activeWnd = document.querySelector(".layout__wnd--active") as HTMLElement | null;
         if (activeWnd) {
             const foundInActiveWnd = editors.find((e: any) => activeWnd.contains(e?.protyle?.element as HTMLElement));
             if (foundInActiveWnd) return foundInActiveWnd;
@@ -238,8 +237,8 @@ export default class SharePlugin extends Plugin {
 
         // 3) 回退：寻找具有“聚焦”样式的编辑器（类名可能随版本变化）
         const focusClassCandidates = [
-            'protyle--focus',
-            'protyle-focus',
+            "protyle--focus",
+            "protyle-focus",
         ];
         const foundByClass = editors.find((e: any) => {
             const el = e?.protyle?.element as HTMLElement | null;
@@ -259,7 +258,7 @@ export default class SharePlugin extends Plugin {
             const editors = getAllEditor();
             if (!editors.length) return;
 
-            const activeWnd = document.querySelector('.layout__wnd--active') as HTMLElement | null;
+            const activeWnd = document.querySelector(".layout__wnd--active") as HTMLElement | null;
             if (activeWnd) {
                 const foundInActiveWnd = editors.find((e: any) => activeWnd.contains(e?.protyle?.element as HTMLElement));
                 if (foundInActiveWnd?.protyle?.block?.rootID) {
@@ -268,7 +267,7 @@ export default class SharePlugin extends Plugin {
                 }
             }
 
-            const focusClassCandidates = ['protyle--focus','protyle-focus'];
+            const focusClassCandidates = ["protyle--focus", "protyle-focus"];
             const foundByClass = editors.find((e: any) => {
                 const el = e?.protyle?.element as HTMLElement | null;
                 return !!(el && focusClassCandidates.some(c => el.classList?.contains(c)));

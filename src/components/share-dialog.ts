@@ -526,15 +526,15 @@ export class ShareDialog {
      */
     private showUploadProgress(): void {
         if (this.uploadProgressContainer) {
-            this.uploadProgressContainer.style.display = '';
+            this.uploadProgressContainer.style.display = "";
         }
         const hr = this.dialog.element.querySelector("#uploadProgressHr");
         if (hr) {
-            (hr as HTMLElement).style.display = '';
+            (hr as HTMLElement).style.display = "";
         }
         this.fileProgressMap.clear();
         if (this.uploadProgressList) {
-            this.uploadProgressList.innerHTML = '';
+            this.uploadProgressList.innerHTML = "";
         }
     }
 
@@ -543,11 +543,11 @@ export class ShareDialog {
      */
     private hideUploadProgress(): void {
         if (this.uploadProgressContainer) {
-            this.uploadProgressContainer.style.display = 'none';
+            this.uploadProgressContainer.style.display = "none";
         }
         const hr = this.dialog.element.querySelector("#uploadProgressHr");
         if (hr) {
-            (hr as HTMLElement).style.display = 'none';
+            (hr as HTMLElement).style.display = "none";
         }
     }
 
@@ -562,9 +562,9 @@ export class ShareDialog {
 
         // 如果是新文件，创建进度条
         if (!fileProgressEl) {
-            fileProgressEl = document.createElement('div');
-            fileProgressEl.className = 'upload-file-progress';
-            fileProgressEl.style.cssText = 'margin-bottom: 8px; padding: 8px; background: var(--b3-theme-surface); border-radius: 4px;';
+            fileProgressEl = document.createElement("div");
+            fileProgressEl.className = "upload-file-progress";
+            fileProgressEl.style.cssText = "margin-bottom: 8px; padding: 8px; background: var(--b3-theme-surface); border-radius: 4px;";
             
             fileProgressEl.innerHTML = `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
@@ -581,8 +581,8 @@ export class ShareDialog {
         }
 
         // 更新进度条
-        const progressBar = fileProgressEl.querySelector('.file-progress-bar') as HTMLElement;
-        const statusEl = fileProgressEl.querySelector('.file-status') as HTMLElement;
+        const progressBar = fileProgressEl.querySelector(".file-progress-bar") as HTMLElement;
+        const statusEl = fileProgressEl.querySelector(".file-status") as HTMLElement;
 
         if (progressBar) {
             progressBar.style.width = `${progress.percentage}%`;
@@ -590,29 +590,29 @@ export class ShareDialog {
 
         if (statusEl) {
             switch (progress.status) {
-                case 'pending':
-                    statusEl.textContent = '准备中';
-                    statusEl.style.color = 'var(--b3-theme-on-surface-light)';
+                case "pending":
+                    statusEl.textContent = "准备中";
+                    statusEl.style.color = "var(--b3-theme-on-surface-light)";
                     break;
-                case 'uploading':
+                case "uploading":
                     statusEl.textContent = `${progress.percentage}%`;
-                    statusEl.style.color = 'var(--b3-theme-primary)';
+                    statusEl.style.color = "var(--b3-theme-primary)";
                     if (progressBar) {
-                        progressBar.style.background = 'var(--b3-theme-primary)';
+                        progressBar.style.background = "var(--b3-theme-primary)";
                     }
                     break;
-                case 'success':
-                    statusEl.textContent = '✓ 完成';
-                    statusEl.style.color = 'var(--b3-theme-success-color)';
+                case "success":
+                    statusEl.textContent = "✓ 完成";
+                    statusEl.style.color = "var(--b3-theme-success-color)";
                     if (progressBar) {
-                        progressBar.style.background = 'var(--b3-theme-success-color)';
+                        progressBar.style.background = "var(--b3-theme-success-color)";
                     }
                     break;
-                case 'error':
-                    statusEl.textContent = '✗ 失败';
-                    statusEl.style.color = 'var(--b3-card-error-color)';
+                case "error":
+                    statusEl.textContent = "✗ 失败";
+                    statusEl.style.color = "var(--b3-card-error-color)";
                     if (progressBar) {
-                        progressBar.style.background = 'var(--b3-card-error-color)';
+                        progressBar.style.background = "var(--b3-card-error-color)";
                     }
                     break;
             }
@@ -633,7 +633,7 @@ export class ShareDialog {
         let totalProgress = 0;
 
         this.fileProgressMap.forEach((el) => {
-            const progressBar = el.querySelector('.file-progress-bar') as HTMLElement;
+            const progressBar = el.querySelector(".file-progress-bar") as HTMLElement;
             if (progressBar) {
                 const width = parseFloat(progressBar.style.width) || 0;
                 totalProgress += width;
@@ -645,9 +645,9 @@ export class ShareDialog {
 
         const overallPercentage = Math.round(totalProgress / totalFiles);
         
-        const textEl = this.uploadOverallProgress.querySelector('#uploadOverallText');
-        const percentEl = this.uploadOverallProgress.querySelector('#uploadOverallPercent');
-        const barEl = this.uploadOverallProgress.querySelector('#uploadOverallBar') as HTMLElement;
+        const textEl = this.uploadOverallProgress.querySelector("#uploadOverallText");
+        const percentEl = this.uploadOverallProgress.querySelector("#uploadOverallPercent");
+        const barEl = this.uploadOverallProgress.querySelector("#uploadOverallBar") as HTMLElement;
 
         if (textEl) {
             textEl.textContent = `${completedFiles} / ${totalFiles} 个文件`;

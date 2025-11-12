@@ -562,7 +562,7 @@ export class AssetListView {
 
         confirmBtn.addEventListener("click", async () => {
             confirmBtn.disabled = true;
-            confirmBtn.innerHTML = `<div class="fn__loading" style="width: 16px; height: 16px;"></div>`;
+            confirmBtn.innerHTML = "<div class=\"fn__loading\" style=\"width: 16px; height: 16px;\"></div>";
 
             try {
                 // 从S3删除
